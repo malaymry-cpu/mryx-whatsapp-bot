@@ -1,43 +1,58 @@
-const menu = "╭━━━ MRYX BOT ━━━ │ !menu │ !list │ !addlist nama | isi │ !dellist nama │ !tebak ╰━━━━━━━━━━━━━━";
 
-const daftar = {};
+const {
+  default: makeWASocket,
+  useMultiFileAuthState,
+  DisconnectReason
+} = require("@whiskeysockets/baileys");
+const pino = require("pino");
 
-function proses(pesan) {
-const teks = pesan.trim();
+async function startBot() {
+  const { state, saveCreds } =
+    await useMultiFileAuthState("auth_info");
 
-if (teks === "!menu") return menu;
+  const sock = makeWASocket({
+    auth: state,
+    logger: pino({ level: "silent" })
+  });
 
-if (teks === "!list") {
-const isi = Object.entries(daftar)
-.map(([nama, nilai]) => "${nama}: ${nilai}")
-.join("\n");
-return isi || "Daftar masih kosong.";
+  sock.ev.on("creds.update", saveCreds);
+
+  sock.ev.on("connection.update", ({ connection, lastDisconnect, qr }) => {
+    if (qr) console.log("QR tersedia untuk menautkan WhatsApp.");
+    if (connection === "open") console.log("MRYX BOT tersambung!");
+    if (connection === "close" &&
+        lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut) {
+      startBot();
+    }
+  });
+
+  sock.ev.on("messages.upsert", async ({ messages }) => {
+    for (const msg of messages) {
+      if (!msg.message || msg.key.fromMe) continue;
+
+      const jid = msg.key.remoteJid;
+      const text =
+        msg.message.conversation ||
+        msg.message.extendedTextMessage?.text ||
+        "";
+
+      if (!jid?.endsWith("@g.us")) continue;
+
+      if (text.trim() === "!menu") {
+        await sock.sendMessage(jid, {
+          text: "MRYX BOT\n!menu\n!list\n!tebak"
+        });
+      } else if (text.trim() === "!list") {
+        await sock.sendMessage(jid, {
+          text: "Daftar MRYX masih kosong."
+        });
+      } else if (text.trim() === "!tebak") {
+        await sock.sendMessage(jid, {
+          text: "Tebak-tebakan: Apa yang punya jarum tapi tidak bisa menjahit? Jawab: jam."
+        });
+      }
+    }
+  });
 }
 
-if (teks.startsWith("!addlist ")) {
-const data = teks.slice(9).split("|");
-const nama = data[0]?.trim();
-const nilai = data.slice(1).join("|").trim();
-
-if (!nama || !nilai) return "Format: !addlist nama | isi";
-daftar[nama] = nilai;
-return "Berhasil menambahkan " + nama;
-
-}
-
-if (teks.startsWith("!dellist ")) {
-const nama = teks.slice(9).trim();
-if (!(nama in daftar)) return "Nama tidak ditemukan.";
-delete daftar[nama];
-return "Berhasil menghapus " + nama;
-}
-
-if (teks === "!tebak") {
-return "Tebak: aku punya jarum, tetapi tidak bisa menjahit. Apakah aku?";
-}
-
-return null;
-}
-
-console.log("MRYX BOT siap diuji.");
-console.log(proses("!menu"));
+startBot().catch(console.error);
