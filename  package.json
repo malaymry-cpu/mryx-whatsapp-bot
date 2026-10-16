@@ -1,12 +1,12 @@
+
 {
-"name": "mryx-whatsapp-bot",
-"version": "1.0.0",
-"private": true,
-"scripts": {
-"start": "node bot.js"
-},
-"dependencies": {
-"@whiskeysockets/baileys": "^6.7.18",
-"pino": "^9.6.0"
-}
+  "name": "mryx-whatsapp-bot",
+  "version": "1.0.0",
+  "scripts": {
+    "start": "node bot.js"
+  },
+  "dependencies": {
+    "@whiskeysockets/baileys": "^6.7.18",
+    "pino": "^9.6.0"
+  }
 }
